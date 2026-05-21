@@ -4,6 +4,7 @@
 	import Controls from '$lib/components/Controls.svelte';
 	import Loader from '$lib/components/Loader.svelte';
 	import DataTable from '$lib/components/DataTable.svelte';
+	import ReviewsTable from '$lib/components/ReviewsTable.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import FlagSwitcher from '$lib/components/FlagSwitcher.svelte';
 	import UpdateBanner from '$lib/components/UpdateBanner.svelte';
@@ -106,6 +107,21 @@
 	{/await}
 </Container>
 
+<Container>
+	{#await data.streamed.reviews}
+		<div class="reviews-loading">Loading reviews…</div>
+	{:then result}
+		{#if result.data !== null}
+			<ReviewsTable reviews={result.data} />
+		{:else}
+			<div class="error-state">
+				<p>Failed to load reviews.</p>
+				<p class="error-detail">{result.error}</p>
+			</div>
+		{/if}
+	{/await}
+</Container>
+
 <FlagSwitcher amplitudeOrgSlug={data.amplitudeOrgSlug} />
 
 <style>
@@ -122,5 +138,12 @@
 		font-size: 12px;
 		color: var(--color-danger);
 		font-family: monospace;
+	}
+
+	.reviews-loading {
+		padding: 24px;
+		text-align: center;
+		color: var(--color-text-muted);
+		font-size: 12px;
 	}
 </style>

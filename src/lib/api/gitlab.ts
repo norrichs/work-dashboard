@@ -1,5 +1,5 @@
 import type { DashboardConfig } from '$lib/config';
-import type { CIPipelineJob, CIPipelineStatus, GitLabMR } from '$lib/types';
+import type { CIPipelineJob, CIPipelineStatus, GitLabMR, ReviewItem, ReviewState } from '$lib/types';
 
 interface GitLabBranchResponse {
 	name: string;
@@ -139,6 +139,65 @@ export async function fetchCIPipelineInfo(
 		pipelineWebUrl: pipeline.web_url,
 		jobs
 	};
+}
+
+interface GitLabReviewMRResponse {
+	iid: number;
+	title: string;
+	web_url: string;
+	author: { username: string };
+}
+
+interface GitLabApprovalsResponse {
+	approved_by: Array<{ user: { username: string } }>;
+}
+
+export async function fetchGitLabReviewRequests(
+	config: DashboardConfig
+): Promise<ReviewItem[]> {
+	const baseUrl = `${config.gitlab.baseUrl}/api/v4/projects/${config.gitlab.projectId}/merge_requests`;
+	const headers = { 'PRIVATE-TOKEN': config.gitlab.token };
+	const me = config.gitlab.authorUsername;
+	const url = `${baseUrl}?state=opened&reviewer_username=${encodeURIComponent(me)}&per_page=100`;
+
+	const response = await fetch(url, { headers });
+	if (!response.ok) {
+		const body = await response.text().catch(() => '');
+		throw new Error(`GitLab review-requests error ${response.status}: ${body}`);
+	}
+
+	const mrs: GitLabReviewMRResponse[] = await response.json();
+
+	return Promise.all(
+		mrs.map(async (mr) => {
+			const approved = await hasGitLabApproval(config, mr.iid, me).catch(() => false);
+			return {
+				source: 'gitlab' as const,
+				id: mr.iid,
+				title: mr.title,
+				webUrl: mr.web_url,
+				author: mr.author.username,
+				repo: config.gitlab.repo,
+				myReviewState: (approved ? 'approved' : 'pending') as ReviewState
+			};
+		})
+	);
+}
+
+async function hasGitLabApproval(
+	config: DashboardConfig,
+	mrIid: number,
+	username: string
+): Promise<boolean> {
+	const url = `${config.gitlab.baseUrl}/api/v4/projects/${config.gitlab.projectId}/merge_requests/${mrIid}/approvals`;
+	const response = await fetch(url, {
+		headers: { 'PRIVATE-TOKEN': config.gitlab.token }
+	});
+	if (!response.ok) return false;
+	const data: GitLabApprovalsResponse = await response.json();
+	return data.approved_by.some(
+		(a) => a.user.username.toLowerCase() === username.toLowerCase()
+	);
 }
 
 async function fetchPipelineJobs(

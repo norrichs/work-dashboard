@@ -1,10 +1,15 @@
 import type { PageServerLoad } from './$types';
 import { getConfig } from '$lib/config';
 import { fetchJiraWorkItems, fetchJiraProjectStatuses } from '$lib/api/jira';
-import { fetchGitLabMRs, fetchCIPipelineInfo, fetchGitLabBranches } from '$lib/api/gitlab';
+import {
+	fetchGitLabMRs,
+	fetchCIPipelineInfo,
+	fetchGitLabBranches,
+	fetchGitLabReviewRequests
+} from '$lib/api/gitlab';
 import type { CIPipelineInfo } from '$lib/api/gitlab';
-import { fetchGitHubPRs } from '$lib/api/github';
-import type { DashboardRow, GitLabMR, UnifiedPR } from '$lib/types';
+import { fetchGitHubPRs, fetchGitHubReviewRequests } from '$lib/api/github';
+import type { DashboardRow, GitLabMR, ReviewItem, UnifiedPR } from '$lib/types';
 
 type ApiResult<T> = { data: T; error: null } | { data: null; error: string };
 
@@ -63,13 +68,13 @@ export const load: PageServerLoad = () => {
 	const jiraPromise = fetchJiraWorkItems(config);
 	const jiraStatusesPromise = fetchJiraProjectStatuses(config).catch(() => [] as string[]);
 	const gitlabPromise = fetchGitLabMRs(config);
-	const githubPromise = config.github
+	const githubPromise = config.github.length > 0
 		? fetchGitHubPRs(config)
 		: Promise.resolve([] as UnifiedPR[]);
 
 	const jiraStatus = resilient(jiraPromise.then((items) => ({ count: items.length })));
 	const gitlabStatus = resilient(gitlabPromise.then((mrs) => ({ count: mrs.length })));
-	const githubStatus = config.github
+	const githubStatus = config.github.length > 0
 		? resilient(githubPromise.then((prs) => ({ count: prs.length })))
 		: Promise.resolve({ data: null, error: null } as ApiResult<null>);
 
@@ -113,9 +118,16 @@ export const load: PageServerLoad = () => {
 		)
 	);
 
+	const reviews: Promise<ApiResult<ReviewItem[]>> = resilient(
+		Promise.all([
+			config.github.length > 0 ? fetchGitHubReviewRequests(config).catch(() => [] as ReviewItem[]) : Promise.resolve([] as ReviewItem[]),
+			fetchGitLabReviewRequests(config).catch(() => [] as ReviewItem[])
+		]).then(([gh, gl]) => [...gh, ...gl])
+	);
+
 	return {
 		amplitudeOrgSlug: config.amplitude.orgSlug,
-		githubConfigured: config.github !== null,
+		githubConfigured: config.github.length > 0,
 		jiraStatuses: config.jiraStatuses,
 		prStatuses: config.prStatuses,
 		streamed: {
@@ -124,6 +136,7 @@ export const load: PageServerLoad = () => {
 			githubStatus,
 			gitlabVpnError,
 			rows,
+			reviews,
 			jiraStatuses: jiraStatusesPromise
 		}
 	};

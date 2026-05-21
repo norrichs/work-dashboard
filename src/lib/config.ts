@@ -18,11 +18,11 @@ interface YamlSettings {
 		repo?: string;
 		authorUsername?: string;
 	};
-	github?: {
+	github?: Array<{
 		owner?: string;
 		repo?: string;
 		authorUsername?: string;
-	};
+	}>;
 	team?: TeamMember[];
 	amplitude?: {
 		baseUrl?: string;
@@ -85,12 +85,12 @@ export interface DashboardConfig {
 		repo: string;
 		authorUsername: string;
 	};
-	github: {
+	github: Array<{
 		token: string;
 		owner: string;
 		repo: string;
 		authorUsername: string;
-	} | null;
+	}>;
 	team: TeamMember[];
 	amplitude: {
 		baseUrl: string;
@@ -128,7 +128,7 @@ function buildTeam(settings: YamlSettings): TeamMember[] {
 		{
 			jiraEmail: settings.jira?.email,
 			gitlabAuthorUsername: settings.gitlab?.authorUsername,
-			githubAuthorUsername: settings.github?.authorUsername
+			githubAuthorUsername: settings.github?.[0]?.authorUsername
 		}
 	];
 }
@@ -150,14 +150,14 @@ export function getConfig(): DashboardConfig {
 			repo: settings.gitlab!.repo!,
 			authorUsername: settings.gitlab!.authorUsername!
 		},
-		github: settings.github?.owner && settings.github?.repo && settings.github?.authorUsername
-			? {
-					token: GITHUB_TOKEN,
-					owner: settings.github.owner,
-					repo: settings.github.repo,
-					authorUsername: settings.github.authorUsername
-				}
-			: null,
+		github: (settings.github ?? [])
+			.filter((r) => r.owner && r.repo && r.authorUsername)
+			.map((r) => ({
+				token: GITHUB_TOKEN,
+				owner: r.owner!,
+				repo: r.repo!,
+				authorUsername: r.authorUsername!
+			})),
 		amplitude: {
 			baseUrl: settings.amplitude!.baseUrl!,
 			orgSlug: settings.amplitude?.orgSlug ?? '',

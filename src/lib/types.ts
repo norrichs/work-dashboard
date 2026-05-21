@@ -66,6 +66,18 @@ export interface DashboardRow {
 	branches: string[];
 }
 
+export type ReviewState = 'pending' | 'approved' | 'changes_requested' | 'commented';
+
+export interface ReviewItem {
+	source: 'gitlab' | 'github';
+	id: number;
+	title: string;
+	webUrl: string;
+	author: string;
+	repo: string;
+	myReviewState: ReviewState;
+}
+
 export interface AmplitudeSegmentCondition {
 	prop: string;
 	op: string;

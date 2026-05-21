@@ -18,12 +18,16 @@ gitlab:
   repo: your-org/your-repo                 # GitLab project path (org/repo-name)
 
 # ─── GitHub ───────────────────────────────────────────────────────────────────
-# Optional: fetch GitHub PRs alongside GitLab MRs.
-# Your token goes in .env as GITHUB_TOKEN.
+# Optional: fetch GitHub PRs alongside GitLab MRs. List one entry per repo —
+# PRs from all listed repos are fetched and shown together.
+# Your token goes in .env as GITHUB_TOKEN (shared across all repos).
 github:
-  authorUsername: your-github-username   # GitHub username (filters PRs to yours)
-  owner: your-org                        # GitHub org or user who owns the repo
-  repo: your-repo-name                   # Repository name (without org prefix)
+  - owner: your-org                       # GitHub org or user who owns the repo
+    repo: your-repo-name                  # Repository name (without org prefix)
+    authorUsername: your-github-username  # GitHub username (filters PRs to yours)
+  # - owner: your-org
+  #   repo: another-repo
+  #   authorUsername: your-github-username
 
 # ─── Team ─────────────────────────────────────────────────────────────────────
 # Optional: define team members to show work items for the whole team.
